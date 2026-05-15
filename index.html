@@ -253,7 +253,7 @@ function fmtAmt(n) {
 
 // ── Load data ─────────────────────────────────────────────────
 async function loadData() {
-  if (CONFIG.SHEET_ID === '1vEcKQDEsuQ53K-C63QMFuniFJnN6yL-tB4vMkQBfWEQ') {
+  if (CONFIG.SHEET_ID === 'VLOZ_SEM_SHEET_ID') {
     document.getElementById('config-warn').style.display = 'block';
     document.getElementById('overlay').classList.add('hidden');
     document.getElementById('status').textContent = '⚠ Není nastaven SHEET_ID';
@@ -510,6 +510,3 @@ function renderTx() {
 
 // ── Init ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', loadData);
-</script>
-</body>
-</html>
