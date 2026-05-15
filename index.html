@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rodinné výdaje</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── Reset & base ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #0f172a;
+  --surface: #1e293b;
+  --border:  #334155;
+  --muted:   #64748b;
+  --text:    #e2e8f0;
+  --sub:     #94a3b8;
+  --pos:     #22c55e;
+  --neg:     #ef4444;
+  --blue:    #3b82f6;
+  --purple:  #a78bfa;
+  --orange:  #f59e0b;
+  --radius:  10px;
+}
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+/* ── Header ───────────────────────────────────────── */
+header { background: linear-gradient(135deg, #1e3a5f 0%, #2d1b69 100%); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.header-left h1 { font-size: 1.25rem; font-weight: 700; color: #fff; }
+.header-left p  { font-size: .78rem; color: #93c5fd; margin-top: 2px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+#refresh-btn { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 6px 14px; border-radius: 7px; cursor: pointer; font-size: .82rem; transition: background .2s; }
+#refresh-btn:hover { background: rgba(255,255,255,.2); }
+#status { font-size: .78rem; color: #93c5fd; }
+
+/* ── Layout ───────────────────────────────────────── */
+.container { max-width: 1400px; margin: 0 auto; padding: 16px; }
+.gap { display: grid; gap: 14px; }
+
+/* ── Tabs ─────────────────────────────────────────── */
+.tabs { display: flex; gap: 2px; background: var(--surface); border-radius: var(--radius); padding: 3px; width: fit-content; }
+.tab { padding: 7px 18px; border: none; background: transparent; cursor: pointer; border-radius: 8px; font-size: .82rem; font-weight: 500; color: var(--sub); transition: all .15s; }
+.tab.active { background: var(--border); color: var(--text); }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Cards ────────────────────────────────────────── */
+.card { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
+.card-title { font-size: .75rem; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+
+/* ── KPI grid ─────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; border: 1px solid var(--border); }
+.kpi-label { font-size: .7rem; color: var(--sub); text-transform: uppercase; letter-spacing: .06em; }
+.kpi-value { font-size: 1.4rem; font-weight: 700; line-height: 1.25; margin-top: 4px; }
+.kpi-sub   { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+.c-pos { color: var(--pos); }
+.c-neg { color: var(--neg); }
+.c-blue { color: var(--blue); }
+.c-orange { color: var(--orange); }
+
+/* ── Year buttons ─────────────────────────────────── */
+.year-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.year-btn { background: var(--surface); border: 1px solid var(--border); color: var(--sub); padding: 5px 14px; border-radius: 7px; cursor: pointer; font-size: .82rem; transition: all .15s; }
+.year-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+
+/* ── Charts ───────────────────────────────────────── */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+.chart-wrap { position: relative; }
+canvas { max-height: 280px; }
+
+/* ── Table ────────────────────────────────────────── */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.filters input, .filters select { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; font-size: .82rem; color: var(--text); outline: none; }
+.filters input:focus, .filters select:focus { border-color: var(--blue); }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .81rem; }
+th { background: var(--bg); padding: 8px 10px; text-align: left; font-weight: 600; color: var(--sub); border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+td { padding: 7px 10px; border-bottom: 1px solid rgba(51,65,85,.5); white-space: nowrap; }
+tr:hover td { background: rgba(51,65,85,.4); }
+.badge { padding: 2px 7px; border-radius: 10px; font-size: .7rem; font-weight: 600; }
+.b-banka { background: #1e3a5f; color: #60a5fa; }
+.b-kreditka { background: #3b1f6e; color: #a78bfa; }
+.b-sporak { background: #14352b; color: #34d399; }
+.tfoot { margin-top: 8px; font-size: .75rem; color: var(--muted); }
+
+/* ── Monthly table ────────────────────────────────── */
+.mtbl th, .mtbl td { text-align: right; font-size: .78rem; padding: 5px 8px; }
+.mtbl th:first-child, .mtbl td:first-child { text-align: left; white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+.mtbl .group-hdr td { background: var(--bg); color: var(--sub); font-weight: 700; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+.mtbl .subtotal td { background: rgba(15,23,42,.6); font-weight: 700; }
+.mtbl .grand td { background: var(--bg); font-weight: 700; color: var(--text); }
+
+/* ── Loading overlay ──────────────────────────────── */
+#overlay { position: fixed; inset: 0; background: rgba(15,23,42,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; gap: 14px; }
+#overlay.hidden { display: none; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Config warning ───────────────────────────────── */
+#config-warn { background: #422006; border: 1px solid #f59e0b; border-radius: var(--radius); padding: 14px 18px; color: #fde68a; font-size: .9rem; line-height: 1.7; }
+#config-warn code { background: #1c0d02; padding: 1px 6px; border-radius: 4px; font-size: .85em; }
+</style>
+</head>
+<body>
+
+<!-- ══ KONFIGURACE ══════════════════════════════════════════════
+     Vyplň SHEET_ID svého Google Sheetu.
+     Jak ho najít: otevři sheet, URL = .../spreadsheets/d/TADY_JE_ID/edit
+     Sheet musí být sdílený: "Kdokoli se odkazem může zobrazit"
+     SHEET_NAME = název záložky s transakcemi (výchozí "Transakce")
+═════════════════════════════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  SHEET_ID:   '1vEcKQDEsuQ53K-C63QMFuniFJnN6yL-tB4vMkQBfWEQ',   // ← ZDE VYPLŇ
+  SHEET_NAME: 'Transakce',
+};
+</script>
+<!-- ══════════════════════════════════════════════════════════ -->
+
+<div id="overlay">
+  <div class="spinner"></div>
+  <div style="color:var(--sub);font-size:.9rem">Načítám data…</div>
+</div>
+
+<header>
+  <div class="header-left">
+    <h1>🏠 Rodinné výdaje</h1>
+    <p id="status">Inicializace…</p>
+  </div>
+  <div class="header-right">
+    <button id="refresh-btn" onclick="loadData()">↻ Obnovit</button>
+  </div>
+</header>
+
+<div class="container gap" style="margin-top:16px">
+
+  <!-- Config warning (skryje se po načtení) -->
+  <div id="config-warn" style="display:none">
+    ⚠️ <strong>Konfigurace chybí.</strong> Otevři soubor <code>index.html</code> v textovém editoru,
+    najdi řádek <code>SHEET_ID: 'VLOZ_SEM_SHEET_ID'</code> a vlož ID svého Google Sheetu.
+    Pak sheet nastav jako veřejný: <em>Sdílet → Kdokoli se odkazem</em>.
+  </div>
+
+  <!-- Tabs -->
+  <div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('overview')">📊 Přehled</button>
+      <button class="tab" onclick="switchTab('monthly')">📅 Měsíčně</button>
+      <button class="tab" onclick="switchTab('txns')">📋 Transakce</button>
+    </div>
+  </div>
+
+  <!-- ══ PŘEHLED ══════════════════════════════════════════════ -->
+  <div class="panel active" id="tab-overview">
+    <!-- Year buttons -->
+    <div class="year-row" id="year-btns" style="margin-bottom:12px"></div>
+    <!-- KPI -->
+    <div class="kpi-grid" id="kpi-grid" style="margin-bottom:14px"></div>
+    <!-- Charts row -->
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-title">Měsíční příjmy vs výdaje</div>
+        <div class="chart-wrap"><canvas id="chart-monthly"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Cash flow po měsících</div>
+        <div class="chart-wrap"><canvas id="chart-cashflow"></canvas></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">Výdaje dle kategorie (celý rok)</div>
+      <div class="chart-wrap"><canvas id="chart-cats" style="max-height:380px"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ MĚSÍČNĚ ══════════════════════════════════════════════ -->
+  <div class="panel" id="tab-monthly">
+    <div class="year-row" id="year-btns2" style="margin-bottom:12px"></div>
+    <div class="card" style="overflow-x:auto">
+      <table class="mtbl" id="mtbl"></table>
+    </div>
+  </div>
+
+  <!-- ══ TRANSAKCE ════════════════════════════════════════════ -->
+  <div class="panel" id="tab-txns">
+    <div class="filters">
+      <input type="text" id="f-search" placeholder="🔍 Hledat…" oninput="renderTx()">
+      <select id="f-year"   onchange="renderTx()"><option value="">Všechny roky</option></select>
+      <select id="f-month"  onchange="renderTx()"><option value="">Všechny měsíce</option></select>
+      <select id="f-source" onchange="renderTx()">
+        <option value="">Všechny zdroje</option>
+        <option value="Banka">Banka</option>
+        <option value="Kreditka">Kreditka</option>
+        <option value="Spořák">Spořák</option>
+      </select>
+      <select id="f-cat" onchange="renderTx()"><option value="">Všechny kategorie</option><option value="__empty">Bez kategorie</option></select>
+    </div>
+    <div class="card tbl-wrap" style="max-height:520px;overflow-y:auto">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('date')" style="cursor:pointer">Datum ↕</th>
+            <th>Zdroj</th>
+            <th>Popis</th>
+            <th onclick="sortBy('amount')" style="cursor:pointer;text-align:right">Částka ↕</th>
+            <th>Kategorie</th>
+          </tr>
+        </thead>
+        <tbody id="tx-body"></tbody>
+      </table>
+    </div>
+    <div class="tfoot" id="tx-footer"></div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ── Kategorie / skupiny ───────────────────────────────────────
+const INC_CATS = new Set(['Příjem','Příjem Toufarova','Příjem Hasilova','Mimořádný příjem']);
+const SKIP_CATS = new Set([...INC_CATS, 'Cash','Výdaje Toufarova','Výdaje Hasilova']);
+
+const GROUPS = {
+  'Měsíční útrata':    ['Jídlo','Restika','Vybavení','Drogérie','Doktor','Cash','Benzin'],
+  'Roční útrata':      ['Oblečení','Kroužky','Sport','Kultura','Darky','Dům','Auto','Dovolenka','Ostatní roční'],
+  'Pravidelné platby': ['Hypo','Škola','Kapesné','Internet','Elektrina','Plyn','Voda','Životko','Dary','Penzijko','Mobil','Ostatní pravidelné'],
+  'Byty – Toufarova':  ['Výdaje Toufarova','Příjem Toufarova'],
+  'Byty – Hasilova':   ['Výdaje Hasilova','Příjem Hasilova'],
+  'Ostatní':           ['Příjem','Mimořádný příjem','Mimořádný výdaj'],
+};
+const ALL_CATS = Object.values(GROUPS).flat();
+
+const MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const MONTHS_SHORT = ['Led','Úno','Bře','Dub','Kvě','Čer','Čvc','Srp','Zář','Říj','Lis','Pro'];
+
+// ── State ─────────────────────────────────────────────────────
+let ALL = [];
+let curYear = new Date().getFullYear();
+let years = [];
+let sortKey = 'date', sortDir = -1;
+let charts = {};
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmt(n)    { return Math.round(Math.abs(n)).toLocaleString('cs-CZ'); }
+function fmtS(n)   { return (n < 0 ? '−' : '+') + fmt(n) + ' Kč'; }
+function fmtAmt(n) {
+  if (n == null) return '';
+  const cls = n < 0 ? 'c-neg' : 'c-pos';
+  return `<span class="${cls}">${fmtS(n)}</span>`;
+}
+
+// ── Load data ─────────────────────────────────────────────────
+async function loadData() {
+  if (CONFIG.SHEET_ID === '1vEcKQDEsuQ53K-C63QMFuniFJnN6yL-tB4vMkQBfWEQ') {
+    document.getElementById('config-warn').style.display = 'block';
+    document.getElementById('overlay').classList.add('hidden');
+    document.getElementById('status').textContent = '⚠ Není nastaven SHEET_ID';
+    return;
+  }
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('status').textContent = 'Načítám z Google Sheets…';
+
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(CONFIG.SHEET_NAME)}`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    processCSV(text);
+  } catch (e) {
+    document.getElementById('status').textContent = '❌ Chyba načítání: ' + e.message;
+    document.getElementById('overlay').classList.add('hidden');
+  }
+}
+
+function processCSV(text) {
+  const result = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
+  ALL = result.data.map(r => ({
+    date:   (r['Datum'] || r['datum'] || '').toString().trim().slice(0,10),
+    desc:   (r['Popis'] || r['popis'] || '').toString().trim(),
+    cat:    (r['Kategorie'] || r['kategorie'] || '').toString().trim(),
+    amount: parseFloat(r['Částka (Kč)'] || r['Částka'] || r['castka'] || 0),
+    source: (r['Zdroj'] || r['zdroj'] || 'Banka').toString().trim(),
+    year:   parseInt(r['Rok'] || r['rok']) || 0,
+    month:  parseInt(r['Měsíc'] || r['mesic'] || r['Mesic']) || 0,
+    id:     (r['Id transakce'] || r['id'] || '').toString(),
+  })).filter(r => r.date && !isNaN(r.amount));
+
+  years = [...new Set(ALL.map(t => t.year))].filter(y => y > 2000).sort((a,b) => b - a);
+  if (!years.includes(curYear)) curYear = years[0] || new Date().getFullYear();
+
+  initFilters();
+  renderYearBtns();
+  renderOverview();
+  renderMonthly();
+
+  const n = ALL.length;
+  const last = ALL.reduce((mx, t) => t.date > mx ? t.date : mx, '');
+  document.getElementById('status').textContent = `${n.toLocaleString('cs-CZ')} transakcí · poslední ${last}`;
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['overview','monthly','txns'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'overview') renderOverview();
+  if (name === 'monthly')  renderMonthly();
+  if (name === 'txns')     renderTx();
+}
+
+// ── Year buttons ──────────────────────────────────────────────
+function renderYearBtns() {
+  const html = years.map(y =>
+    `<button class="year-btn ${y===curYear?'active':''}" onclick="setYear(${y})">${y}</button>`
+  ).join('');
+  document.getElementById('year-btns').innerHTML  = html;
+  document.getElementById('year-btns2').innerHTML = html;
+}
+function setYear(y) { curYear = y; renderYearBtns(); renderOverview(); renderMonthly(); }
+
+// ── Overview ──────────────────────────────────────────────────
+function renderOverview() {
+  const tx = ALL.filter(t => t.year === curYear);
+  let income = 0, expense = 0, uncat = 0;
+  tx.forEach(t => {
+    if (INC_CATS.has(t.cat)) income += t.amount;
+    else if (t.cat && !SKIP_CATS.has(t.cat)) expense += t.amount;
+    if (!t.cat) uncat++;
+  });
+  const cf = income + expense;
+
+  document.getElementById('kpi-grid').innerHTML = [
+    ['CELKOVÉ PŘÍJMY', '+' + fmt(income) + ' Kč', 'c-pos', 'příjmy roku ' + curYear],
+    ['CELKOVÉ VÝDAJE', fmt(Math.abs(expense)) + ' Kč', 'c-neg', 'výdaje roku ' + curYear],
+    ['CASH FLOW', (cf >= 0 ? '+' : '−') + fmt(cf) + ' Kč', cf >= 0 ? 'c-pos' : 'c-neg', 'rozdíl'],
+    ['TRANSAKCÍ', tx.length.toLocaleString('cs-CZ'), 'c-blue', `${curYear}`],
+    ['NEZAŘAZENO', uncat.toLocaleString('cs-CZ'), uncat > 50 ? 'c-orange' : 'c-pos', 'bez kategorie'],
+  ].map(([l,v,c,s]) => `<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+
+  // Monthly income vs expenses
+  const mIncome  = Array(12).fill(0);
+  const mExpense = Array(12).fill(0);
+  const mCF      = Array(12).fill(0);
+  tx.forEach(t => {
+    const m = t.month - 1;
+    if (m < 0 || m > 11) return;
+    if (INC_CATS.has(t.cat)) mIncome[m] += t.amount;
+    else if (!SKIP_CATS.has(t.cat)) mExpense[m] += t.amount;
+    mCF[m] += t.amount;
+  });
+
+  buildChart('chart-monthly', 'bar', MONTHS_SHORT,
+    [
+      { label: 'Příjmy',  data: mIncome.map(v => Math.round(v)),  backgroundColor: '#22c55e44', borderColor: '#22c55e', borderWidth: 2 },
+      { label: 'Výdaje',  data: mExpense.map(v => Math.round(Math.abs(v))), backgroundColor: '#ef444444', borderColor: '#ef4444', borderWidth: 2 },
+    ]);
+
+  buildChart('chart-cashflow', 'line', MONTHS_SHORT,
+    [{ label: 'Cash flow', data: mCF.map(v => Math.round(v)),
+       borderColor: '#3b82f6', backgroundColor: '#3b82f630',
+       fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: '#3b82f6' }]);
+
+  // Categories
+  const catSums = {};
+  tx.forEach(t => {
+    if (t.amount < 0 && t.cat && !SKIP_CATS.has(t.cat))
+      catSums[t.cat] = (catSums[t.cat] || 0) + Math.abs(t.amount);
+  });
+  const sorted = Object.entries(catSums).sort((a,b) => b[1]-a[1]);
+  buildChart('chart-cats', 'bar', sorted.map(e=>e[0]),
+    [{ label: 'Kč', data: sorted.map(e => Math.round(e[1])),
+       backgroundColor: '#3b82f6aa', borderColor: '#3b82f6', borderWidth: 1 }],
+    { indexAxis: 'y' });
+}
+
+function buildChart(id, type, labels, datasets, extra = {}) {
+  if (charts[id]) { charts[id].destroy(); }
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      ...extra,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => '  ' + Math.round(ctx.parsed.y ?? ctx.parsed.x).toLocaleString('cs-CZ') + ' Kč' } }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => v.toLocaleString('cs-CZ') }, grid: { color: '#1e293b' } },
+      }
+    }
+  });
+}
+
+// ── Monthly table ─────────────────────────────────────────────
+function renderMonthly() {
+  const tx = ALL.filter(t => t.year === curYear);
+  const months = [...new Set(tx.map(t => t.month))].filter(m => m > 0).sort((a,b) => a-b);
+
+  const data = {};
+  tx.forEach(t => {
+    if (!t.cat) return;
+    if (!data[t.cat]) data[t.cat] = {};
+    data[t.cat][t.month] = (data[t.cat][t.month] || 0) + t.amount;
+  });
+
+  const mHdr = months.map(m => `<th>${MONTHS_SHORT[m-1]}</th>`).join('');
+  let html = `<thead><tr><th>Kategorie</th>${mHdr}<th>Celkem</th></tr></thead><tbody>`;
+
+  const monthTotals = {};
+  let gTotal = 0;
+
+  for (const [group, cats] of Object.entries(GROUPS)) {
+    const groupCats = cats.filter(c => data[c]);
+    if (!groupCats.length) continue;
+    html += `<tr class="group-hdr"><td colspan="${months.length + 2}">${group}</td></tr>`;
+    let gSum = 0;
+    groupCats.forEach(cat => {
+      const total = months.reduce((s,m) => s + (data[cat][m] || 0), 0);
+      gSum += total;
+      const cls = total < 0 ? 'c-neg' : total > 0 ? 'c-pos' : '';
+      html += `<tr><td title="${cat}">${cat}</td>`;
+      months.forEach(m => {
+        const v = data[cat][m] || 0;
+        monthTotals[m] = (monthTotals[m] || 0) + v;
+        html += v ? `<td class="${v<0?'c-neg':''}">${Math.round(v).toLocaleString('cs-CZ')}</td>` : '<td></td>';
+      });
+      html += `<td class="${cls}" style="font-weight:600">${Math.round(total).toLocaleString('cs-CZ')}</td></tr>`;
+    });
+  }
+
+  gTotal = months.reduce((s,m) => s + (monthTotals[m] || 0), 0);
+  html += `<tr class="grand"><td>CELKEM</td>`;
+  months.forEach(m => {
+    const v = monthTotals[m] || 0;
+    html += `<td class="${v<0?'c-neg':v>0?'c-pos':''}">${Math.round(v).toLocaleString('cs-CZ')}</td>`;
+  });
+  html += `<td class="${gTotal<0?'c-neg':'c-pos'}" style="font-weight:700">${Math.round(gTotal).toLocaleString('cs-CZ')}</td></tr>`;
+  html += '</tbody>';
+  document.getElementById('mtbl').innerHTML = html;
+}
+
+// ── Transactions ──────────────────────────────────────────────
+function initFilters() {
+  const ySel = document.getElementById('f-year');
+  ySel.innerHTML = '<option value="">Všechny roky</option>';
+  years.forEach(y => { const o = document.createElement('option'); o.value = y; o.text = y; ySel.add(o); });
+  ySel.value = curYear;
+
+  const mSel = document.getElementById('f-month');
+  mSel.innerHTML = '<option value="">Všechny měsíce</option>';
+  MONTHS.forEach((m,i) => { const o = document.createElement('option'); o.value = i+1; o.text = m; mSel.add(o); });
+
+  const cSel = document.getElementById('f-cat');
+  cSel.innerHTML = '<option value="">Všechny kategorie</option><option value="__empty">Bez kategorie</option>';
+  const cats = [...new Set(ALL.map(t => t.cat).filter(Boolean))].sort();
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.text = c; cSel.add(o); });
+}
+
+function sortBy(key) {
+  if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
+  renderTx();
+}
+
+function renderTx() {
+  const q  = (document.getElementById('f-search').value || '').toLowerCase();
+  const fy = +document.getElementById('f-year').value || 0;
+  const fm = +document.getElementById('f-month').value || 0;
+  const fs = document.getElementById('f-source').value;
+  const fc = document.getElementById('f-cat').value;
+
+  let rows = ALL.filter(t => {
+    if (fy && t.year   !== fy) return false;
+    if (fm && t.month  !== fm) return false;
+    if (fs && t.source !== fs) return false;
+    if (fc === '__empty' &&  t.cat) return false;
+    if (fc && fc !== '__empty' && t.cat !== fc) return false;
+    if (q && !(t.desc + t.cat + t.source + t.date).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  rows.sort((a,b) => {
+    const va = sortKey === 'amount' ? a.amount : a.date;
+    const vb = sortKey === 'amount' ? b.amount : b.date;
+    return va < vb ? sortDir : va > vb ? -sortDir : 0;
+  });
+
+  const shown = rows.slice(0, 500);
+  const srcCls = { Banka: 'b-banka', Kreditka: 'b-kreditka', Spořák: 'b-sporak' };
+  document.getElementById('tx-body').innerHTML = shown.map(t => `
+    <tr>
+      <td style="color:var(--sub)">${t.date}</td>
+      <td><span class="badge ${srcCls[t.source]||'b-banka'}">${t.source}</span></td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis" title="${(t.desc||'').replace(/"/g,'&quot;')}">${t.desc||''}</td>
+      <td style="text-align:right">${fmtAmt(t.amount)}</td>
+      <td style="color:${t.cat?'var(--sub)':'var(--neg)'}">${t.cat||'⚠ Nezařazeno'}</td>
+    </tr>`).join('');
+
+  document.getElementById('tx-footer').textContent =
+    `Zobrazeno ${shown.length} z ${rows.length} (celkem ${ALL.length.toLocaleString('cs-CZ')})`;
+}
+
+// ── Init ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>
