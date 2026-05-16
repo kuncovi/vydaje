@@ -328,12 +328,7 @@ const BANK_BASE = 989637;   // stav k 31.12.2023
 const BANK_BASE_YEAR = 2023;
 
 function calcYearCF(year) {
-  let income = 0, expense = 0;
-  ALL.filter(t => t.year === year).forEach(t => {
-    if (INC_CATS.has(t.cat)) income += t.amount;
-    else if (t.cat && !SKIP_CATS.has(t.cat)) expense += t.amount;
-  });
-  return income + expense;
+  return ALL.filter(t => t.year === year).reduce((s, t) => s + t.amount, 0);
 }
 
 function calcBankBalance(upToYear) {
@@ -352,15 +347,14 @@ function renderOverview() {
     if (INC_CATS.has(t.cat)) income += t.amount;
     else if (t.cat && !SKIP_CATS.has(t.cat)) expense += t.amount;
   });
-  const cf = income + expense;
+  const cf = ALL.filter(t => t.year === curYear).reduce((s, t) => s + t.amount, 0);
   const bankBalance = calcBankBalance(curYear);
-  const bankSub = `základ ${BANK_BASE.toLocaleString('cs-CZ')} Kč (31.12.${BANK_BASE_YEAR}) + CF`;
 
   document.getElementById('kpi-grid').innerHTML = [
     ['CELKOVÉ PŘÍJMY', '+' + fmt(income) + ' Kč', 'c-pos', 'příjmy roku ' + curYear],
     ['CELKOVÉ VÝDAJE', fmt(Math.abs(expense)) + ' Kč', 'c-neg', 'výdaje roku ' + curYear],
-    ['CASH FLOW', (cf >= 0 ? '+' : '−') + fmt(cf) + ' Kč', cf >= 0 ? 'c-pos' : 'c-neg', 'rozdíl příjmy − výdaje'],
-    ['BANKOVNÍ ÚČTY', fmt(bankBalance) + ' Kč', bankBalance >= BANK_BASE ? 'c-pos' : 'c-neg', bankSub],
+    ['CASH FLOW', (cf >= 0 ? '+' : '−') + fmt(cf) + ' Kč', cf >= 0 ? 'c-pos' : 'c-neg', 'rozdíl všech transakcí'],
+    ['BANKOVNÍ ÚČTY', fmt(bankBalance) + ' Kč', bankBalance >= BANK_BASE ? 'c-pos' : 'c-neg', 'běžný i spořící účet'],
   ].map(([l,v,c,s]) => `<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
 
   // Monthly income vs expenses
