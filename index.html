@@ -368,12 +368,14 @@ function renderOverview() {
   const mIncome  = Array(12).fill(0);
   const mExpense = Array(12).fill(0);
   const mCF      = Array(12).fill(0);
+  const mHasData = Array(12).fill(false);
   tx.forEach(t => {
     const m = t.month - 1;
     if (m < 0 || m > 11) return;
     if (KPI_INC.has(t.cat)) mIncome[m] += t.amount;
     else mExpense[m] += t.amount;
     mCF[m] += t.amount;
+    mHasData[m] = true;
   });
 
   const toK = v => Math.round(v / 100) / 10;  // zaokrouhlení na 1 des. místo v tis.
@@ -388,7 +390,8 @@ function renderOverview() {
           backgroundColor: '#22c55e44', borderColor: '#22c55e', borderWidth: 2 },
         { type: 'bar',  label: 'Výdaje',    data: mExpense.map(v => toK(Math.abs(v))),
           backgroundColor: '#ef444444', borderColor: '#ef4444', borderWidth: 2 },
-        { type: 'line', label: 'Cash flow', data: mCF.map(toK),
+        { type: 'line', label: 'Cash flow', data: mCF.map((v, i) => mHasData[i] ? toK(v) : null),
+          spanGaps: false,
           borderColor: '#3b82f6', backgroundColor: 'transparent',
           borderWidth: 2, tension: 0.35, pointRadius: 4,
           pointBackgroundColor: '#3b82f6', yAxisID: 'y' },
