@@ -350,11 +350,21 @@ function renderOverview() {
   const cf = ALL.filter(t => t.year === curYear).reduce((s, t) => s + t.amount, 0);
   const bankBalance = calcBankBalance(curYear);
 
+  function fmtKpi(v) {
+    return v >= 0
+      ? { val: '+' + fmt(v) + ' Kč', cls: 'c-pos' }
+      : { val: '−' + fmt(Math.abs(v)) + ' Kč', cls: 'c-neg' };
+  }
+  const kIncome  = fmtKpi(income);
+  const kExpense = fmtKpi(expense);
+  const kCF      = fmtKpi(cf);
+  const kBank    = fmtKpi(bankBalance);
+
   document.getElementById('kpi-grid').innerHTML = [
-    ['CELKOVÉ PŘÍJMY', '+' + fmt(income) + ' Kč', 'c-pos', 'příjmy roku ' + curYear],
-    ['CELKOVÉ VÝDAJE', fmt(Math.abs(expense)) + ' Kč', 'c-neg', 'výdaje roku ' + curYear],
-    ['CASH FLOW', (cf >= 0 ? '+' : '−') + fmt(cf) + ' Kč', cf >= 0 ? 'c-pos' : 'c-neg', 'rozdíl všech transakcí'],
-    ['BANKOVNÍ ÚČTY', fmt(bankBalance) + ' Kč', bankBalance >= BANK_BASE ? 'c-pos' : 'c-neg', 'běžný i spořící účet'],
+    ['CELKOVÉ PŘÍJMY', kIncome.val,  kIncome.cls,  'mzda a mimořádný příjem'],
+    ['CELKOVÉ VÝDAJE', kExpense.val, kExpense.cls, 'transakce mimo příjem'],
+    ['CASH FLOW',      kCF.val,      kCF.cls,      'rozdíl všech transakcí'],
+    ['BANKOVNÍ ÚČTY',  kBank.val,    kBank.cls,    'běžný i spořící účet'],
   ].map(([l,v,c,s]) => `<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
 
   // Monthly income vs expenses
