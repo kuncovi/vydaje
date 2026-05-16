@@ -323,23 +323,44 @@ function renderYearBtns() {
 }
 function setYear(y) { curYear = y; renderYearBtns(); renderOverview(); renderMonthly(); }
 
+// ── Bankovní účty ─────────────────────────────────────────────
+const BANK_BASE = 989637;   // stav k 31.12.2023
+const BANK_BASE_YEAR = 2023;
+
+function calcYearCF(year) {
+  let income = 0, expense = 0;
+  ALL.filter(t => t.year === year).forEach(t => {
+    if (INC_CATS.has(t.cat)) income += t.amount;
+    else if (t.cat && !SKIP_CATS.has(t.cat)) expense += t.amount;
+  });
+  return income + expense;
+}
+
+function calcBankBalance(upToYear) {
+  let balance = BANK_BASE;
+  for (let y = BANK_BASE_YEAR + 1; y <= upToYear; y++) {
+    balance += calcYearCF(y);
+  }
+  return balance;
+}
+
 // ── Overview ──────────────────────────────────────────────────
 function renderOverview() {
   const tx = ALL.filter(t => t.year === curYear);
-  let income = 0, expense = 0, uncat = 0;
+  let income = 0, expense = 0;
   tx.forEach(t => {
     if (INC_CATS.has(t.cat)) income += t.amount;
     else if (t.cat && !SKIP_CATS.has(t.cat)) expense += t.amount;
-    if (!t.cat) uncat++;
   });
   const cf = income + expense;
+  const bankBalance = calcBankBalance(curYear);
+  const bankSub = `základ ${BANK_BASE.toLocaleString('cs-CZ')} Kč (31.12.${BANK_BASE_YEAR}) + CF`;
 
   document.getElementById('kpi-grid').innerHTML = [
     ['CELKOVÉ PŘÍJMY', '+' + fmt(income) + ' Kč', 'c-pos', 'příjmy roku ' + curYear],
     ['CELKOVÉ VÝDAJE', fmt(Math.abs(expense)) + ' Kč', 'c-neg', 'výdaje roku ' + curYear],
-    ['CASH FLOW', (cf >= 0 ? '+' : '−') + fmt(cf) + ' Kč', cf >= 0 ? 'c-pos' : 'c-neg', 'rozdíl'],
-    ['TRANSAKCÍ', tx.length.toLocaleString('cs-CZ'), 'c-blue', `${curYear}`],
-    ['NEZAŘAZENO', uncat.toLocaleString('cs-CZ'), uncat > 50 ? 'c-orange' : 'c-pos', 'bez kategorie'],
+    ['CASH FLOW', (cf >= 0 ? '+' : '−') + fmt(cf) + ' Kč', cf >= 0 ? 'c-pos' : 'c-neg', 'rozdíl příjmy − výdaje'],
+    ['BANKOVNÍ ÚČTY', fmt(bankBalance) + ' Kč', bankBalance >= BANK_BASE ? 'c-pos' : 'c-neg', bankSub],
   ].map(([l,v,c,s]) => `<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
 
   // Monthly income vs expenses
