@@ -291,7 +291,7 @@ function processCSV(text) {
 
   const n = ALL.length;
   const last = ALL.reduce((mx, t) => t.date > mx ? t.date : mx, '');
-  document.getElementById('status').textContent = `${n.toLocaleString('cs-CZ')} transakcí · poslední ${last}`;
+  document.getElementById('status').textContent = `Poslední výpis: ${last}`;
   document.getElementById('overlay').classList.add('hidden');
 }
 
@@ -443,9 +443,25 @@ function renderOverview() {
         hoverOffset: 8,
       }]
     },
+    plugins: [{
+      id: 'donutCenter',
+      beforeDraw: chart => {
+        const { ctx, chartArea: { top, left, width, height } } = chart;
+        const cx = left + width / 2, cy = top + height / 2;
+        ctx.save();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = 'bold 17px Arial';
+        ctx.fillText(donutTotal.toLocaleString('cs-CZ') + ' tis.', cx, cy - 10);
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('Kč celkem', cx, cy + 12);
+        ctx.restore();
+      }
+    }],
     options: {
       responsive: true, maintainAspectRatio: true,
-      cutout: '60%',
+      cutout: '62%',
       plugins: {
         legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, padding: 16,
           generateLabels: chart => chart.data.labels.map((label, i) => ({
