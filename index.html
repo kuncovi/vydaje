@@ -553,7 +553,7 @@ function renderMonthly() {
 
   function fv(v) {
     if (!v) return '<td></td>';
-    return `<td class="${v<0?'c-neg':''}">${Math.round(v).toLocaleString('cs-CZ')}</td>`;
+    return `<td>${Math.round(v).toLocaleString('cs-CZ')}</td>`;
   }
   function fvBold(v, extraCls='') {
     const cls = [v<0?'c-neg':v>0?'c-pos':'', extraCls].filter(Boolean).join(' ');
@@ -574,14 +574,13 @@ function renderMonthly() {
       const prev  = prevTotals[cat] || 0;
       secTotal += total;
       secPrev  += prev;
-      const cls = total < 0 ? 'c-neg' : total > 0 ? 'c-pos' : '';
       html += `<tr${cat==='__uncat'?' style="font-style:italic;opacity:.8"':''}><td>${label}</td>`;
       months.forEach(m => {
         const v = data[cat]?.[m] || 0;
         secMonthTotals[m] = (secMonthTotals[m] || 0) + v;
         html += fv(v);
       });
-      html += `<td class="${cls}" style="font-weight:600">${Math.round(total).toLocaleString('cs-CZ')}</td>`;
+      html += `<td style="font-weight:600">${Math.round(total).toLocaleString('cs-CZ')}</td>`;
       html += prev ? `<td class="minrok-val" style="color:#64748b">${Math.round(prev).toLocaleString('cs-CZ')}</td>` : '<td></td>';
       html += '</tr>';
     });
