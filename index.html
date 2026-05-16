@@ -223,12 +223,12 @@ const INC_CATS = new Set(['Příjem','Příjem Toufarova','Příjem Hasilova','M
 const SKIP_CATS = new Set([...INC_CATS, 'Cash','Výdaje Toufarova','Výdaje Hasilova']);
 
 const GROUPS = {
-  'Měsíční útrata':    ['Jídlo','Restika','Vybavení','Drogérie','Doktor','Cash','Benzin'],
-  'Roční útrata':      ['Oblečení','Kroužky','Sport','Kultura','Darky','Dům','Auto','Dovolenka','Ostatní roční'],
-  'Pravidelné platby': ['Hypo','Škola','Kapesné','Internet','Elektrina','Plyn','Voda','Životko','Dary','Penzijko','Mobil','Ostatní pravidelné'],
+  'Měsíční útrata':    ['Jídlo','Reštika','Vybavení','Drogérie','Doktor','Cash','Benzin'],
+  'Roční útrata':      ['Oblečení','Kroužky','Sport','Kultura','Dárky','Dům','Auto','Dovolenka','Ostatní'],
+  'Pravidelné platby': ['Hypo','Škola','Kapesné','Internet','Elektřina','Plyn','Voda','Životko','Dary','Penzijko'],
   'Byty – Toufarova':  ['Výdaje Toufarova','Příjem Toufarova'],
   'Byty – Hasilova':   ['Výdaje Hasilova','Příjem Hasilova'],
-  'Ostatní':           ['Příjem','Mimořádný příjem','Mimořádný výdaj'],
+  'Příjmy a mimořádné':['Příjem','Mimořádný příjem','Mimořádný výdaj'],
 };
 const ALL_CATS = Object.values(GROUPS).flat();
 
