@@ -339,13 +339,16 @@ function calcBankBalance(upToYear) {
   return balance;
 }
 
+// Kategorie pro KPI dlaždice příjmů (bez bytů)
+const KPI_INC = new Set(['Příjem', 'Mimořádný příjem']);
+
 // ── Overview ──────────────────────────────────────────────────
 function renderOverview() {
   const tx = ALL.filter(t => t.year === curYear);
   let income = 0, expense = 0;
   tx.forEach(t => {
-    if (INC_CATS.has(t.cat)) income += t.amount;
-    else if (t.cat && !SKIP_CATS.has(t.cat)) expense += t.amount;
+    if (KPI_INC.has(t.cat)) income += t.amount;
+    else expense += t.amount;
   });
   const cf = ALL.filter(t => t.year === curYear).reduce((s, t) => s + t.amount, 0);
   const bankBalance = calcBankBalance(curYear);
@@ -534,7 +537,4 @@ function renderTx() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', loadData);
-</script>
-</body>
-</html>
+window.addE
