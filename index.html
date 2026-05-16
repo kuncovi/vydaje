@@ -451,6 +451,7 @@ function renderOverview() {
             text: `${label}  ${donutVals[i].toLocaleString('cs-CZ')} tis. Kč  (${donutTotal > 0 ? Math.round(donutVals[i]/donutTotal*100) : 0} %)`,
             fillStyle: chart.data.datasets[0].backgroundColor[i],
             strokeStyle: chart.data.datasets[0].borderColor[i],
+            fontColor: '#94a3b8',
             lineWidth: 2, index: i,
           }))
         }},
