@@ -506,8 +506,11 @@ function renderOverview() {
       const s = txArr.filter(t => t.cat === cat).reduce((acc, t) => acc + t.amount, 0);
       return Math.round(Math.abs(s) / 100) / 10;  // tis. Kč, 1 des. místo
     }
-    const dataCur  = cats.map(c => catSum(tx, c));
-    const dataPrev = cats.map(c => catSum(txPrev, c));
+    // Seřaď kategorie dle hodnoty aktuálního roku sestupně
+    const sorted = [...cats].sort((a, b) => catSum(tx, b) - catSum(tx, a));
+    const dataCur  = sorted.map(c => catSum(tx, c));
+    const dataPrev = sorted.map(c => catSum(txPrev, c));
+    cats = sorted;
     if (charts[chartId]) charts[chartId].destroy();
     charts[chartId] = new Chart(document.getElementById(chartId).getContext('2d'), {
       type: 'bar',
