@@ -603,6 +603,10 @@ function renderMonthly() {
   }
 
   // Grand total
+  // grandPrev se počítá ze VŠECH kategorií sekcí z minulého roku,
+  // nezávisle na tom, zda mají data v aktuálním roce (aby CELKEM seděl s pohledem na předchozí rok)
+  const grandPrevAll = SECTIONS.reduce((sum, s) =>
+    sum + s.cats.reduce((ss, cat) => ss + (prevTotals[cat] || 0), 0), 0);
   const grandCls = grandTotal < 0 ? 'grand-neg' : 'grand-pos';
   html += `<tr class="${grandCls}"><td>CELKEM</td>`;
   months.forEach(m => {
@@ -610,7 +614,7 @@ function renderMonthly() {
     html += fvBold(v, v<0?'c-neg':v>0?'c-pos':'');
   });
   html += fvBold(grandTotal, grandTotal<0?'c-neg':'c-pos');
-  html += `<td style="font-weight:700;color:#64748b">${Math.round(grandPrev).toLocaleString('cs-CZ')}</td>`;
+  html += `<td style="font-weight:700;color:#64748b">${Math.round(grandPrevAll).toLocaleString('cs-CZ')}</td>`;
   html += '</tr></tbody>';
   document.getElementById('mtbl').innerHTML = html;
 }
