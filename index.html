@@ -173,6 +173,14 @@ const CONFIG = {
       <div class="card-title">Přehled výdajů bez mimořádných &nbsp;<span style="font-size:11px;color:#64748b;font-weight:400">(celý rok)</span></div>
       <div class="chart-wrap"><canvas id="chart-donut" style="max-height:360px"></canvas></div>
     </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">Měsíční útrata — kategorie &nbsp;<span style="font-size:11px;color:#64748b;font-weight:400" id="mesicni-subtitle"></span></div>
+      <div class="chart-wrap"><canvas id="chart-mesicni"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">Roční útrata — kategorie &nbsp;<span style="font-size:11px;color:#64748b;font-weight:400" id="rocni-subtitle"></span></div>
+      <div class="chart-wrap"><canvas id="chart-rocni"></canvas></div>
+    </div>
   </div>
 
   <!-- ══ MĚSÍČNĚ ══════════════════════════════════════════════ -->
@@ -487,6 +495,68 @@ function renderOverview() {
       }
     }
   });
+
+  // ── Srovnávací sloupcové grafy (aktuální rok vs předchozí) ──
+  const txPrev = ALL.filter(t => t.year === curYear - 1);
+  const prevYear = curYear - 1;
+
+  function renderCatBarChart(chartId, subtitleId, cats) {
+    // Celoroční suma dané kategorie (absolutní hodnota pro výdaje)
+    function catSum(txArr, cat) {
+      const s = txArr.filter(t => t.cat === cat).reduce((acc, t) => acc + t.amount, 0);
+      return Math.round(Math.abs(s) / 100) / 10;  // tis. Kč, 1 des. místo
+    }
+    const dataCur  = cats.map(c => catSum(tx, c));
+    const dataPrev = cats.map(c => catSum(txPrev, c));
+    const totalCur  = dataCur.reduce((s, v) => s + v, 0);
+    const totalPrev = dataPrev.reduce((s, v) => s + v, 0);
+    document.getElementById(subtitleId).textContent =
+      `${curYear}: ${totalCur.toLocaleString('cs-CZ')} tis. Kč  |  ${prevYear}: ${totalPrev.toLocaleString('cs-CZ')} tis. Kč`;
+
+    if (charts[chartId]) charts[chartId].destroy();
+    charts[chartId] = new Chart(document.getElementById(chartId).getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: cats,
+        datasets: [
+          {
+            label: String(curYear),
+            data: dataCur,
+            backgroundColor: '#3b82f688',
+            borderColor: '#3b82f6',
+            borderWidth: 2,
+          },
+          {
+            label: String(prevYear),
+            data: dataPrev,
+            backgroundColor: '#64748b55',
+            borderColor: '#64748b',
+            borderWidth: 2,
+          },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+          tooltip: { callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('cs-CZ')} tis. Kč`
+          }}
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+          y: {
+            ticks: { color: '#64748b', font: { size: 10 }, callback: v => v.toLocaleString('cs-CZ') },
+            grid: { color: '#1e293b' },
+            title: { display: true, text: 'tis. Kč', color: '#64748b', font: { size: 10 } }
+          }
+        }
+      }
+    });
+  }
+
+  renderCatBarChart('chart-mesicni', 'mesicni-subtitle', GROUPS['Měsíční útrata']);
+  renderCatBarChart('chart-rocni',   'rocni-subtitle',   GROUPS['Roční útrata']);
 }
 
 function buildChart(id, type, labels, datasets, extra = {}) {
