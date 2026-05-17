@@ -174,11 +174,11 @@ const CONFIG = {
       <div class="chart-wrap"><canvas id="chart-donut" style="max-height:360px"></canvas></div>
     </div>
     <div class="card" style="margin-top:14px">
-      <div class="card-title">Měsíční útrata — kategorie &nbsp;<span style="font-size:11px;color:#64748b;font-weight:400" id="mesicni-subtitle"></span></div>
+      <div class="card-title">Měsíční útrata — kategorie</div>
       <div class="chart-wrap"><canvas id="chart-mesicni"></canvas></div>
     </div>
     <div class="card" style="margin-top:14px">
-      <div class="card-title">Roční útrata — kategorie &nbsp;<span style="font-size:11px;color:#64748b;font-weight:400" id="rocni-subtitle"></span></div>
+      <div class="card-title">Roční útrata — kategorie</div>
       <div class="chart-wrap"><canvas id="chart-rocni"></canvas></div>
     </div>
   </div>
@@ -500,7 +500,7 @@ function renderOverview() {
   const txPrev = ALL.filter(t => t.year === curYear - 1);
   const prevYear = curYear - 1;
 
-  function renderCatBarChart(chartId, subtitleId, cats) {
+  function renderCatBarChart(chartId, cats) {
     // Celoroční suma dané kategorie (absolutní hodnota pro výdaje)
     function catSum(txArr, cat) {
       const s = txArr.filter(t => t.cat === cat).reduce((acc, t) => acc + t.amount, 0);
@@ -508,11 +508,6 @@ function renderOverview() {
     }
     const dataCur  = cats.map(c => catSum(tx, c));
     const dataPrev = cats.map(c => catSum(txPrev, c));
-    const totalCur  = dataCur.reduce((s, v) => s + v, 0);
-    const totalPrev = dataPrev.reduce((s, v) => s + v, 0);
-    document.getElementById(subtitleId).textContent =
-      `${curYear}: ${totalCur.toLocaleString('cs-CZ')} tis. Kč  |  ${prevYear}: ${totalPrev.toLocaleString('cs-CZ')} tis. Kč`;
-
     if (charts[chartId]) charts[chartId].destroy();
     charts[chartId] = new Chart(document.getElementById(chartId).getContext('2d'), {
       type: 'bar',
@@ -522,8 +517,8 @@ function renderOverview() {
           {
             label: String(curYear),
             data: dataCur,
-            backgroundColor: '#3b82f688',
-            borderColor: '#3b82f6',
+            backgroundColor: (chartId === 'chart-rocni' ? '#f59e0b' : '#3b82f6') + '88',
+            borderColor: chartId === 'chart-rocni' ? '#f59e0b' : '#3b82f6',
             borderWidth: 2,
           },
           {
@@ -555,8 +550,8 @@ function renderOverview() {
     });
   }
 
-  renderCatBarChart('chart-mesicni', 'mesicni-subtitle', GROUPS['Měsíční útrata']);
-  renderCatBarChart('chart-rocni',   'rocni-subtitle',   GROUPS['Roční útrata']);
+  renderCatBarChart('chart-mesicni', GROUPS['Měsíční útrata']);
+  renderCatBarChart('chart-rocni',   GROUPS['Roční útrata']);
 }
 
 function buildChart(id, type, labels, datasets, extra = {}) {
